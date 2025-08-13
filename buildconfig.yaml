@@ -1,0 +1,38 @@
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: java-app-git
+  namespace: java-bc
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'java-app:latest'
+  resources: {}
+  successfulBuildsHistoryLimit: 2
+  failedBuildsHistoryLimit: 1
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: ImageStreamTag
+        namespace: openshift
+        name: 'ubi8-openjdk-17:1.18'
+      incremental: false
+  source:
+    type: Git
+    git:
+      uri: 'https://github.com/BabbarPB08/buildconfig-javatest.git'
+      ref: main
+    sourceSecret:
+      name: github-https
+  triggers:
+    - type: ConfigChange
+    - type: ImageChange
+      imageChange: {}
+    - type: GitHub
+      github:
+        secretReference:
+          name: github-webhook
+  runPolicy: Serial
+
