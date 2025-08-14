@@ -1,24 +1,10 @@
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
-  name: java-app-git
+  name: java-app-wildfly
   namespace: java-bc
 spec:
-  output:
-    to:
-      kind: ImageStreamTag
-      name: 'java-app:latest'
-  resources: {}
-  successfulBuildsHistoryLimit: 2
-  failedBuildsHistoryLimit: 1
-  strategy:
-    type: Source
-    sourceStrategy:
-      from:
-        kind: ImageStreamTag
-        namespace: openshift
-        name: 'ubi8-openjdk-17:1.18'
-      incremental: false
+  runPolicy: Serial
   source:
     type: Git
     git:
@@ -26,6 +12,17 @@ spec:
       ref: main
     sourceSecret:
       name: github-https
+  strategy:
+    type: Source
+    sourceStrategy:
+      from:
+        kind: DockerImage
+        name: quay.io/wildfly/wildfly-s2i:26.1.0.Final
+      incremental: false
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'java-app:latest'
   triggers:
     - type: ConfigChange
     - type: ImageChange
@@ -34,5 +31,5 @@ spec:
       github:
         secretReference:
           name: github-webhook
-  runPolicy: Serial
-
+  successfulBuildsHistoryLimit: 2
+  failedBuildsHistoryLimit: 1
