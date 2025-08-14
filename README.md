@@ -1,49 +1,41 @@
 # Java BuildConfig Example on OpenShift
 
-This repository demonstrates how to build and deploy a simple Java application in **OpenShift** using a `BuildConfig` with source code from a Git repository.
+This repository demonstrates how to **build and deploy a simple Java application** in **OpenShift** using a `BuildConfig` with source code from a Git repository. The example shows how to build a WAR/JAR file using Maven, push it to an OpenShift ImageStream, and deploy it as a running application accessible via a route.
 
 ---
 
 ## 📋 Prerequisites
 
-- Access to an **OpenShift** cluster with the `oc` CLI installed and logged in.
-- A GitHub account with a personal access token (PAT).
-- Basic knowledge of OpenShift Projects, ImageStreams, and BuildConfigs.
+* Access to an **OpenShift** cluster with the `oc` CLI installed and logged in.
+* A GitHub repository with your Java application.
+* Basic understanding of OpenShift **Projects**, **ImageStreams**, **BuildConfigs**, and **Routes**.
 
 ---
 
-## 🚀 Quick Start (Recommended)
+## 🚀 Quick Start
 
-If you simply want to use the existing code in this repository:
+If you want to quickly test the example:
 
-1. **Fork this repository** to your GitHub account.
-2. Update the **GitHub secrets** and **BuildConfig** to point to your fork.
-3. Apply the OpenShift configuration (steps in [Deployment on OpenShift](#-deployment-on-openshift)).
+1. Fork this repository to your GitHub account.
+2. Update the **BuildConfig** and secrets to point to your forked repository.
+3. Apply the OpenShift configuration as outlined below.
 
 ---
 
 ## 🛠 Optional: Create the Java Project from Scratch
 
-If you want to build your own project instead of forking:
+### 1️⃣ Generate a Maven Project
 
-### 1️⃣ Create a Maven Project
-```
+```bash
 mvn archetype:generate \
     -DgroupId=com.example \
     -DartifactId=myapp \
     -DarchetypeArtifactId=maven-archetype-quickstart \
     -DinteractiveMode=false
-````
-
-Move into the project directory:
-
-```bash
 cd myapp
 ```
 
 ### 2️⃣ Update `pom.xml`
-
-Replace with:
 
 ```xml
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -55,14 +47,23 @@ Replace with:
     <groupId>com.example</groupId>
     <artifactId>myapp</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <packaging>jar</packaging>
+    <packaging>war</packaging>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
     </properties>
 
     <dependencies>
+        <!-- Servlet API -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>5.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- JUnit for testing -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -73,6 +74,7 @@ Replace with:
 
     <build>
         <plugins>
+            <!-- Compiler Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -82,12 +84,22 @@ Replace with:
                     <target>${maven.compiler.target}</target>
                 </configuration>
             </plugin>
+
+            <!-- WAR Plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.3.2</version>
+                <configuration>
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
 ```
 
-Commit and push this code to your GitHub repository.
+Commit and push the project to your GitHub repository.
 
 ---
 
@@ -119,7 +131,7 @@ oc create secret generic github-webhook \
 >
 > * `GITHUB_USER` → your GitHub username
 > * `YOUR_PAT` → your personal access token
-> * `MY_WEBHOOK_SECRET` → your chosen webhook secret
+> * `MY_WEBHOOK_SECRET` → chosen webhook secret
 
 ### 3️⃣ Create an ImageStream
 
@@ -129,7 +141,7 @@ oc create imagestream java-app -n java-bc
 
 ### 4️⃣ Apply the BuildConfig
 
-Save this as `buildconfig.yaml`:
+Save as `buildconfig.yaml`:
 
 ```yaml
 apiVersion: build.openshift.io/v1
@@ -151,7 +163,7 @@ spec:
       from:
         kind: ImageStreamTag
         namespace: openshift
-        name: 'ubi8-openjdk-17:1.18'
+        name: 'jboss-webserver57-openjdk11-tomcat9-openshift-ubi8:latest'
       incremental: false
   source:
     type: Git
@@ -183,16 +195,68 @@ oc apply -f buildconfig.yaml
 oc start-build java-app-git --follow
 ```
 
+### 6️⃣ Deploy the Application
+
+```bash
+oc new-app java-bc/java-app:latest --name java-webapp
+```
+
+### 7️⃣ Expose the Service via a Route
+
+```bash
+oc expose service/java-webapp
+```
+
+### 8️⃣ Verify the Deployment
+
+```bash
+oc get route java-webapp
+curl http://<route-host>
+```
+
+Expected output:
+
+```
+Hello World!
+```
+
 ---
 
-## 🔍 Verification
+## 🔄 Automatic Redeployment (CI/CD)
+
+You can configure **automatic builds and deployments** whenever you push changes to GitHub.
+
+1. Ensure your `BuildConfig` has the **GitHub trigger**:
+
+```yaml
+triggers:
+- type: GitHub
+  github:
+    secretReference:
+      name: github-webhook
+```
+
+2. On GitHub, create a **Webhook**:
+
+* Payload URL: `https://<openshift-webhook-url>/oapi/v1/namespaces/java-bc/buildconfigs/java-app-git/webhooks/MY_WEBHOOK_SECRET/github`
+* Content type: `application/json`
+* Secret: `MY_WEBHOOK_SECRET`
+* Trigger: `Just the push event`
+
+3. Push changes to your GitHub repository.
+
+4. OpenShift automatically starts a new build and updates the deployed application with the new image.
+
+---
+
+## 🔍 Verification Commands
 
 ```bash
 oc get builds
 oc get is java-app
+oc get pods
+oc get route java-webapp
 ```
-
-## Note: this program has been designed for only to test the functionality of buildconfigs, there is no guarantee of running any kind of HTTP service for test.
 
 ---
 
@@ -201,18 +265,20 @@ oc get is java-app
 ```mermaid
 flowchart LR
     A[GitHub Repository] -->|Webhook / Manual Trigger| B(BuildConfig in OpenShift)
-    B --> C[Source Build using UBI8 OpenJDK 17]
+    B --> C[Source Build using JBoss Web Server 5.7 with OpenJDK11]
     C --> D[ImageStream java-app:latest]
-    D --> E[Deployment / Pod]
+    D --> E[Deployment java-webapp]
+    E --> F[Route Exposure for external access]
 ```
 
-This diagram shows:
+This diagram illustrates:
 
 1. Code is pushed to GitHub.
-2. Webhook or manual trigger starts a BuildConfig.
+2. Webhook or manual trigger starts the BuildConfig.
 3. OpenShift builds the Java application image.
 4. Image is stored in an ImageStream.
-5. Image is used for Deployment or Pod creation.
+5. Deployment is updated with the new image.
+6. Application is exposed via a route for external access.
 
 ---
 
@@ -220,6 +286,5 @@ This diagram shows:
 
 * [OpenShift BuildConfig Documentation](https://docs.openshift.com/container-platform/latest/cicd/builds/understanding-buildconfigs.html)
 * [Maven Official Guide](https://maven.apache.org/guides/)
-
----
+* [JBoss Web Server S2I Images](https://access.redhat.com/containers/?tab=overview#/registry.access.redhat.com/jboss-webserver57/openjdk11-tomcat9-openshift)
 
