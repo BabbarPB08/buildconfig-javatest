@@ -1,13 +1,13 @@
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
-  name: java-app-git
+  name: java-webapp-git
   namespace: java-bc
 spec:
   output:
     to:
       kind: ImageStreamTag
-      name: 'java-app:latest'
+      name: 'java-webapp:latest'
   resources: {}
   successfulBuildsHistoryLimit: 2
   failedBuildsHistoryLimit: 1
@@ -17,13 +17,13 @@ spec:
       from:
         kind: ImageStreamTag
         namespace: openshift
-        name: 'ubi8-openjdk-17:1.18'
+        name: 'wildfly-s2i:1.18'
       incremental: false
   source:
     type: Git
     git:
       uri: 'https://github.com/BabbarPB08/buildconfig-javatest.git'
-      ref: main
+      ref: v2
     sourceSecret:
       name: github-https
   triggers:
