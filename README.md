@@ -129,11 +129,11 @@ oc get route java-webapp
 
 ```mermaid
 flowchart TD
-    A[GitHub Repository (Fork)] -->|Webhook or Manual Push| B(BuildConfig in OpenShift)
+    A[GitHub Repository - Fork] -->|Webhook or Manual Push| B[BuildConfig in OpenShift]
     B --> C[Build Java App using JBoss WebServer + OpenJDK 11]
     C --> D[ImageStream java-app:latest]
     D --> E[Deployment / Pod]
-    E --> F[Service & Route exposed]
+    E --> F[Service and Route exposed]
 ```
 
 This diagram shows the full CI/CD pipeline:
