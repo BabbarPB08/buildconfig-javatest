@@ -193,5 +193,3 @@ flowchart TD
 * [OpenShift BuildConfig Documentation](https://docs.openshift.com/container-platform/latest/cicd/builds/understanding-buildconfigs.html)
 * [S2I Documentation](https://docs.openshift.com/container-platform/latest/cicd/builds/understanding-image-builds.html)
 * [Maven Official Guide](https://maven.apache.org/guides/)
-
-```
