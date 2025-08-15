@@ -1,14 +1,3 @@
-Alright — here’s the **final, fully explained `README.md`** with:
-
-* Only **fork-and-use** instructions (no "start from scratch")
-* **Pipeline section** included
-* **Fixed Mermaid diagram** (GitHub-compatible)
-* **Webhook setup steps** so BuildConfig auto-builds on GitHub commits
-* Clear S2I explanation
-
----
-
-````markdown
 # Java BuildConfig + Deployment Example on OpenShift
 
 This repository demonstrates how to **fork**, build, and deploy a Java application on **OpenShift** using a `BuildConfig` with **Source-to-Image (S2I)** and a **GitHub webhook** for automatic rebuilds.
@@ -30,7 +19,7 @@ This repository demonstrates how to **fork**, build, and deploy a Java applicati
 2. **Create a project in OpenShift**:
    ```bash
    oc new-project java-bc
-````
+   ```
 
 3. **Create secrets for GitHub access**:
 
