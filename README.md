@@ -154,4 +154,3 @@ This diagram shows the full CI/CD pipeline:
 ---
 
 > **Note:** This program is meant to **test BuildConfig functionality**. It may not provide a fully functional web service for production.
-
