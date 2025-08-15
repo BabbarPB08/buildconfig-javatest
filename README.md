@@ -178,7 +178,7 @@ Hello World!
 ```mermaid
 flowchart TD
     A[GitHub Fork] -->|Push Commit| B[GitHub Webhook]
-    B --> C[OpenShift BuildConfig (S2I)]
+    B --> C[OpenShift BuildConfig - S2I]
     C --> D[ImageStream java-app:latest]
     D --> E[Deployment / Pod]
     E --> F[Service]
