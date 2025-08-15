@@ -68,7 +68,7 @@ This repository demonstrates how to **fork**, build, and deploy a Java applicati
      source:
        git:
          ref: main
-         uri: https://github.com/BabbarPB08/buildconfig-javatest.git
+         uri: https://github.com/<YOUR_FORKED_REPO>/buildconfig-javatest.git
        sourceSecret:
          name: github-https
        type: Git
