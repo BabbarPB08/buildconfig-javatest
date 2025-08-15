@@ -1,35 +1,39 @@
 apiVersion: build.openshift.io/v1
 kind: BuildConfig
 metadata:
-  name: java-app-wildfly
+  name: java-app-git
   namespace: java-bc
 spec:
-  runPolicy: Serial
-  source:
-    type: Git
-    git:
-      uri: 'https://github.com/BabbarPB08/buildconfig-javatest.git'
-      ref: main
-    sourceSecret:
-      name: github-https
-  strategy:
-    type: Source
-    sourceStrategy:
-      from:
-        kind: DockerImage
-        name: quay.io/wildfly/wildfly-s2i:26.1.0.Final
-      incremental: false
+  failedBuildsHistoryLimit: 1
   output:
     to:
       kind: ImageStreamTag
-      name: 'java-app:latest'
-  triggers:
-    - type: ConfigChange
-    - type: ImageChange
-      imageChange: {}
-    - type: GitHub
-      github:
-        secretReference:
-          name: github-webhook
+      name: java-app:latest
+  runPolicy: Serial
+  source:
+    git:
+      ref: main
+      uri: https://github.com/BabbarPB08/buildconfig-javatest.git
+    sourceSecret:
+      name: github-https
+    type: Git
+  strategy:
+    sourceStrategy:
+      env:
+      - name: MAVEN_ARGS
+        value: -DskipTests
+      from:
+        kind: ImageStreamTag
+        name: jboss-webserver57-openjdk11-tomcat9-openshift-ubi8:latest
+        namespace: openshift
+      incremental: false
+    type: Source
   successfulBuildsHistoryLimit: 2
-  failedBuildsHistoryLimit: 1
+  triggers:
+  - type: ConfigChange
+  - imageChange: {}
+    type: ImageChange
+  - github:
+      secretReference:
+        name: github-webhook
+    type: GitHub
