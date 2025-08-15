@@ -1,111 +1,171 @@
-# Java BuildConfig Example on OpenShift
+Alright — here’s the **final, fully explained `README.md`** with:
 
-This repository demonstrates how to build and deploy a simple Java application in **OpenShift** using a `BuildConfig` with source code from a Git repository.
+* Only **fork-and-use** instructions (no "start from scratch")
+* **Pipeline section** included
+* **Fixed Mermaid diagram** (GitHub-compatible)
+* **Webhook setup steps** so BuildConfig auto-builds on GitHub commits
+* Clear S2I explanation
+
+---
+
+````markdown
+# Java BuildConfig + Deployment Example on OpenShift
+
+This repository demonstrates how to **fork**, build, and deploy a Java application on **OpenShift** using a `BuildConfig` with **Source-to-Image (S2I)** and a **GitHub webhook** for automatic rebuilds.
 
 ---
 
 ## 📋 Prerequisites
 
-* Access to an **OpenShift** cluster with the `oc` CLI installed and logged in.
-* A GitHub account with a personal access token (PAT).
-* Basic knowledge of OpenShift Projects, ImageStreams, BuildConfigs, and pipelines.
+- Access to an **OpenShift** cluster with the `oc` CLI installed and logged in.
+- A **GitHub** account and the ability to fork this repository.
+- Basic knowledge of OpenShift Projects, ImageStreams, BuildConfigs, and Deployments.
 
 ---
 
-## 🚀 Quick Start (Recommended)
+## 🚀 Quick Start
 
-1. **Fork this repository** to your GitHub account.
-2. Update the Git URL in the `buildconfig.yaml` to point to your fork.
-3. Apply the OpenShift configuration (steps below).
+1. **Fork this repository** into your own GitHub account.
 
-> This method ensures that all builds and deployments use your own fork, keeping your CI/CD isolated.
+2. **Create a project in OpenShift**:
+   ```bash
+   oc new-project java-bc
+````
+
+3. **Create secrets for GitHub access**:
+
+   ```bash
+   oc create secret generic github-https \
+       --type=kubernetes.io/basic-auth \
+       --from-literal=username=GITHUB_USER \
+       --from-literal=password=YOUR_PAT \
+       --namespace=java-bc
+   ```
+
+   ```bash
+   oc create secret generic github-webhook \
+       --from-literal=WebHookSecretKey=MY_WEBHOOK_SECRET \
+       --namespace=java-bc
+   ```
+
+   Replace:
+
+   * `GITHUB_USER` → your GitHub username
+   * `YOUR_PAT` → your GitHub personal access token
+   * `MY_WEBHOOK_SECRET` → your chosen webhook secret
+
+4. **Create an ImageStream**:
+
+   ```bash
+   oc create imagestream java-app -n java-bc
+   ```
+
+5. **Apply the BuildConfig**:
+   Save as `buildconfig.yaml`:
+
+   ```yaml
+   apiVersion: build.openshift.io/v1
+   kind: BuildConfig
+   metadata:
+     name: java-app-git
+     namespace: java-bc
+   spec:
+     output:
+       to:
+         kind: ImageStreamTag
+         name: 'java-app:latest'
+     resources: {}
+     successfulBuildsHistoryLimit: 2
+     failedBuildsHistoryLimit: 1
+     strategy:
+       type: Source
+       sourceStrategy:
+         from:
+           kind: ImageStreamTag
+           namespace: openshift
+           name: 'jboss-webserver57-openjdk11-tomcat9-openshift-ubi8:latest'
+         incremental: false
+     source:
+       type: Git
+       git:
+         uri: 'https://github.com/<your-user>/<your-fork>.git'
+         ref: main
+       sourceSecret:
+         name: github-https
+     triggers:
+       - type: ConfigChange
+       - type: ImageChange
+         imageChange: {}
+       - type: GitHub
+         github:
+           secretReference:
+             name: github-webhook
+     runPolicy: Serial
+   ```
+
+   Apply it:
+
+   ```bash
+   oc apply -f buildconfig.yaml
+   ```
 
 ---
 
-## 📦 Deployment on OpenShift
+## 🔔 Set Up GitHub Webhook for Auto-Builds
 
-### 1️⃣ Create a New Project
+OpenShift supports **S2I builds** triggered by GitHub webhooks.
 
-```bash
-oc new-project java-bc
-```
+1. **Get the webhook URL**:
 
-### 2️⃣ Create GitHub Secrets
+   ```bash
+   oc describe bc java-app-git | grep webhook
+   ```
 
-```bash
-oc create secret generic github-https \
-    --type=kubernetes.io/basic-auth \
-    --from-literal=username=GITHUB_USER \
-    --from-literal=password=YOUR_PAT \
-    --namespace=java-bc
+   Example:
 
-oc create secret generic github-webhook \
-    --from-literal=WebHookSecretKey=MY_WEBHOOK_SECRET \
-    --namespace=java-bc
-```
+   ```
+   https://api.cluster.example.com:6443/apis/build.openshift.io/v1/namespaces/java-bc/buildconfigs/java-app-git/webhooks/<secret>/github
+   ```
 
-> Replace:
->
-> * `GITHUB_USER` → your GitHub username
-> * `YOUR_PAT` → your personal access token
-> * `MY_WEBHOOK_SECRET` → your webhook secret
+2. **Add webhook in GitHub**:
 
-### 3️⃣ Create an ImageStream
+   * Go to your forked repo → **Settings** → **Webhooks** → **Add webhook**
+   * Payload URL: paste the URL above
+   * Content type: `application/json`
+   * Secret: use the value from `MY_WEBHOOK_SECRET`
+   * Select **"Just the push event"**
+   * Save
 
-```bash
-oc create imagestream java-app -n java-bc
-```
+3. **Test**: Commit to `main` → OpenShift auto-starts a build:
 
-### 4️⃣ Apply BuildConfig
-
-Ensure `buildconfig.yaml` points to your fork:
-
-```yaml
-source:
-  git:
-    uri: 'YOUR_FORK_REPO_URL'
-    ref: main
-```
-
-Apply the BuildConfig:
-
-```bash
-oc apply -f buildconfig.yaml
-```
-
----
-
-## 🏗 Pipeline / CI/CD Trigger
-
-OpenShift `BuildConfig` automatically supports triggers:
-
-* **GitHub Webhook:** Push to your repository automatically triggers a build.
-* **ImageChange:** Updates the ImageStream whenever a new image is built.
-* **ConfigChange:** Any change to the BuildConfig itself triggers a build.
-
-```bash
-oc start-build java-app-git --follow
-```
-
-> This ensures a full CI/CD workflow without manual intervention.
+   ```bash
+   oc get builds
+   ```
 
 ---
 
 ## 🖥 Deploy the Application
 
+Once your image is built:
+
 ```bash
 oc new-app java-bc/java-app:latest --name java-webapp
 oc expose service/java-webapp
+```
+
+Check the route:
+
+```bash
 oc get route java-webapp
 ```
 
-Test with curl:
+Test in browser or curl:
 
 ```bash
-curl http://<route-host>
+curl http://<your-route>
 ```
 
-Example response:
+You should see:
 
 ```
 Hello World!
@@ -113,44 +173,36 @@ Hello World!
 
 ---
 
-## 🔍 Verification
-
-```bash
-oc get builds
-oc get is java-app
-oc get pods
-oc get svc
-oc get route java-webapp
-```
-
----
-
-## 📊 Workflow Diagram
+## 📊 Build & Deploy Pipeline
 
 ```mermaid
 flowchart TD
-    A[GitHub Repository - Fork] -->|Webhook or Manual Push| B[BuildConfig in OpenShift]
-    B --> C[Build Java App using JBoss WebServer + OpenJDK 11]
+    A[GitHub Fork] -->|Push Commit| B[GitHub Webhook]
+    B --> C[OpenShift BuildConfig (S2I)]
     C --> D[ImageStream java-app:latest]
     D --> E[Deployment / Pod]
-    E --> F[Service and Route exposed]
+    E --> F[Service]
+    F --> G[Route Exposed to Public]
 ```
 
-This diagram shows the full CI/CD pipeline:
+---
 
-1. Code pushed to GitHub fork triggers BuildConfig.
-2. OpenShift builds the Java application image.
-3. Image is stored in ImageStream.
-4. Deployment and Pod are created automatically.
-5. Service and Route expose the application.
+## 📚 Notes
+
+* **S2I (Source-to-Image)**: This process takes your source code, builds it with a builder image (JBoss WebServer + OpenJDK 11), and produces a runnable image.
+* BuildConfig triggers:
+
+  * **GitHub Webhook** → build on code push.
+  * **ImageChange** → redeploy on new image.
+  * **ConfigChange** → rebuild if config changes.
+* This example is for **testing BuildConfig + S2I** only — not optimized for production.
 
 ---
 
-## 📚 References
+## 🔗 References
 
 * [OpenShift BuildConfig Documentation](https://docs.openshift.com/container-platform/latest/cicd/builds/understanding-buildconfigs.html)
+* [S2I Documentation](https://docs.openshift.com/container-platform/latest/cicd/builds/understanding-image-builds.html)
 * [Maven Official Guide](https://maven.apache.org/guides/)
 
----
-
-> **Note:** This program is meant to **test BuildConfig functionality**. It may not provide a fully functional web service for production.
+```
