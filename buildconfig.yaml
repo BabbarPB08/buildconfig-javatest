@@ -33,7 +33,7 @@ spec:
   - type: ConfigChange
   - imageChange: {}
     type: ImageChange
-  - github:
+  - generic:
       secretReference:
         name: github-webhook
-    type: GitHub
+    type: Generic
