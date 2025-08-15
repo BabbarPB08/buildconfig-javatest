@@ -59,37 +59,39 @@ This repository demonstrates how to **fork**, build, and deploy a Java applicati
      name: java-app-git
      namespace: java-bc
    spec:
+     failedBuildsHistoryLimit: 1
      output:
        to:
          kind: ImageStreamTag
-         name: 'java-app:latest'
-     resources: {}
-     successfulBuildsHistoryLimit: 2
-     failedBuildsHistoryLimit: 1
-     strategy:
-       type: Source
-       sourceStrategy:
-         from:
-           kind: ImageStreamTag
-           namespace: openshift
-           name: 'jboss-webserver57-openjdk11-tomcat9-openshift-ubi8:latest'
-         incremental: false
+         name: java-app:latest
+     runPolicy: Serial
      source:
-       type: Git
        git:
-         uri: 'https://github.com/<your-user>/<your-fork>.git'
          ref: main
+         uri: https://github.com/<YOUR_FORKED_REPO>/buildconfig-javatest.git
        sourceSecret:
          name: github-https
+       type: Git
+     strategy:
+       sourceStrategy:
+         env:
+         - name: MAVEN_ARGS
+           value: -DskipTests
+         from:
+           kind: ImageStreamTag
+           name: jboss-webserver57-openjdk11-tomcat9-openshift-ubi8:latest
+           namespace: openshift
+         incremental: false
+       type: Source
+     successfulBuildsHistoryLimit: 2
      triggers:
-       - type: ConfigChange
-       - type: ImageChange
-         imageChange: {}
-       - type: GitHub
-         github:
-           secretReference:
-             name: github-webhook
-     runPolicy: Serial
+     - type: ConfigChange
+     - imageChange: {}
+       type: ImageChange
+     - github:
+         secretReference:
+           name: github-webhook
+       type: GitHub
    ```
 
    Apply it:
